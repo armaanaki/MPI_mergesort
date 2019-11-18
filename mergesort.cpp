@@ -5,6 +5,8 @@
 
 // declare methods used later
 bool get_input(int argc, char** argv, double*& init_array, unsigned long long& array_size, int comm_sz);
+void merge(double*& array, int left_index, int middle_index, int right_index);
+void mergesort(double*& array, int left_index, int right_index);
 
 int main (int argc, char** argv) {
     // init variables
@@ -53,4 +55,52 @@ bool get_input(int argc, char** argv, double*& init_array, unsigned long long& a
     }
 
     return false;
+}
+
+// method to mergesort
+void mergesort(double*& array, int left_index, int right_index) {
+    if (left_index < right_index) {
+        int middle_index = (right_index+left_index)/2;
+
+        mergesort(array, left_index, middle_index);
+        mergesort(array, middle_index + 1, right_index);
+
+        merge(array, left_index, middle_index, right_index);
+    } 
+}
+
+// method to merge arrays assuming middle_index is the breakpoint
+void merge(double*& array, int left_index, int middle_index, int right_index) {
+    double* temp_array = new double[right_index - left_index + 1];
+    int temp_array_index = 0;
+    int left_array_index = left_index;
+    int right_array_index = middle_index + 1;
+
+    // sort the left and right arrays into the temp array when possible
+    while (left_array_index <= middle_index && right_array_index <= right_index) {
+        if (array[left_array_index] < array[right_array_index]) {
+            temp_array[temp_array_index] = array[left_array_index];
+            left_array_index++;
+        } else {
+            temp_array[temp_array_index] = array[right_array_index];
+            right_array_index++;
+        }
+        temp_array_index++;
+    }
+    
+    // fill in remaining left and right indexes if there are any
+    while (left_array_index <= middle_index) {
+        temp_array[temp_array_index] = array[left_array_index];
+        left_array_index++;
+        temp_array_index++;
+    }
+    while (right_array_index <= right_index) {
+        temp_array[temp_array_index] = array[right_array_index];
+        right_array_index++;
+        temp_array_index++;
+    }
+
+    // fill the temp array into the main array
+    for (int i = left_index; i <= right_index; i++) 
+        array[i] = temp_array[i - left_index];
 }
