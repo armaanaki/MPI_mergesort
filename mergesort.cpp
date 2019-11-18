@@ -1,6 +1,5 @@
 #include <cstdio>
 #include <mpi.h>
-#include <math.h>
 #include "read_file.h"
 
 // declare methods used later
@@ -13,6 +12,7 @@ int main (int argc, char** argv) {
     int my_rank, comm_sz;
     unsigned long long array_size;
     double* init_array;
+    double* my_array;
     
     // init MPI variables
     MPI_Init(NULL, NULL);
@@ -32,8 +32,35 @@ int main (int argc, char** argv) {
     // broadcast array size
     MPI_Bcast(&array_size, 1, MPI_UNSIGNED_LONG_LONG, 0, MPI_COMM_WORLD);
 
+    // init arrays for all processes then scatter -- 
+    // note: my method creates full length arrays on each processor, this is memory inefficent but allows us to not keep creating arrays as creating arrays takes a lot of work
+    int nums_per = array_size/comm_sz;
+    my_array = new double[array_size];
+    MPI_Scatter(init_array, nums_per, MPI_DOUBLE, my_array, nums_per, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    // sort each array on each proc
+    mergesort(my_array, 0, nums_per - 1);
+
+    // merge to rank 0
+    for (int power = 1; power < comm_sz; power *= 2) {
+        for (int i = 0; i < comm_sz; i += (power*2)) {
+            if (my_rank == i) {
+                MPI_Recv(&my_array[nums_per], nums_per, MPI_DOUBLE, i+power, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                merge(my_array, 0, nums_per - 1, (nums_per*2) - 1);
+            } else if (my_rank == i+power) {
+                MPI_Send(my_array, nums_per, MPI_DOUBLE, i, 0, MPI_COMM_WORLD);
+            }
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+        nums_per *= 2;
+    }
+
     // print the sorted array
     if (my_rank == 0) {
+	 	printf("{ ");
+			for (int i = 0; i < array_size; i++)
+				printf("%.2f ", my_array[i]);
+		printf("}\n");
     }
 
     // tell MPI it's finished
